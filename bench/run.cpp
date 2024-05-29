@@ -18,7 +18,7 @@ static void decode_entire_tile(std::string const& buffer) {
             auto const feature = mapbox::vector_tile::feature(layer.getFeature(i),layer);
             auto const& feature_id = feature.getID();
             if (feature_id.is<mapbox::feature::null_value_t>()) {
-                throw std::runtime_error("Hit unexpected error decoding feature");
+                return;
             }
             auto props = feature.getProperties();
             mapbox::vector_tile::points_arrays_type geom = feature.getGeometries<mapbox::vector_tile::points_arrays_type>(1.0);
@@ -48,7 +48,7 @@ int main(/*int argc, char* const argv[]*/) {
                 std::ifstream stream(path.c_str(),std::ios_base::in|std::ios_base::binary);
                 if (!stream.is_open())
                 {
-                    throw std::runtime_error("could not open: '" + path + "'");
+                    return;
                 }
                 std::string message(std::istreambuf_iterator<char>(stream.rdbuf()),(std::istreambuf_iterator<char>()));
                 stream.close();

@@ -181,7 +181,15 @@ inline mapbox::feature::value feature::getValue(const std::string& key, std::str
     const auto end_itr = tags_iter.end();
     while (start_itr != end_itr) {
         std::uint32_t tag_key = static_cast<std::uint32_t>(*start_itr++);
+
+        if (start_itr == end_itr) {
+            return mapbox::feature::null_value;
+        }
+
         std::uint32_t tag_val = static_cast<std::uint32_t>(*start_itr++);;
+        if (values_count <= tag_val) {
+            return mapbox::feature::null_value;
+        }
 
         bool key_found = false;
         for (auto i = key_range.first; i != key_range.second; ++i) {
@@ -212,6 +220,9 @@ inline feature::properties_type feature::getProperties() const {
         properties.reserve(static_cast<std::size_t>(iter_len/2));
         while (start_itr != end_itr) {
             std::uint32_t tag_key = static_cast<std::uint32_t>(*start_itr++);
+            if (start_itr == end_itr) {
+                break;
+            }
             std::uint32_t tag_val = static_cast<std::uint32_t>(*start_itr++);
             properties.emplace(layer_.keys.at(tag_key),parseValue(layer_.values.at(tag_val)));
         }
@@ -315,14 +326,24 @@ GeometryCollectionType feature::getGeometries(float scale) const {
             static const float max_coord = static_cast<float>(std::numeric_limits<typename GeometryCollectionType::coordinate_type>::max());
             static const float min_coord = static_cast<float>(std::numeric_limits<typename GeometryCollectionType::coordinate_type>::min());
 
-            paths.back().emplace_back(
-                static_cast<typename GeometryCollectionType::coordinate_type>(px),
-                static_cast<typename GeometryCollectionType::coordinate_type>(py));
+            if (px > max_coord ||
+                px < min_coord ||
+                py > max_coord ||
+                py < min_coord
+                ) {
+                break;
+            } else {
+                paths.back().emplace_back(
+                    static_cast<typename GeometryCollectionType::coordinate_type>(px),
+                    static_cast<typename GeometryCollectionType::coordinate_type>(py));
+            }
         } else if (cmd == CommandType::CLOSE) {
             if (!paths.back().empty()) {
                 paths.back().push_back(paths.back()[0]);
             }
             length = 0;
+        } else {
+            break;
         }
     }
     if (paths.size() < paths.capacity()) {
@@ -352,6 +373,9 @@ inline buffer::buffer(std::string const& data)
                 name = layer_reader.get_string();
                 has_name = true;
             }
+            if (!has_name) {
+                break;
+            }
             layers.emplace(name, layer_view);
         }
 }
@@ -367,6 +391,9 @@ inline std::vector<std::string> buffer::layerNames() const {
 
 inline layer buffer::getLayer(const std::string& name) const {
     auto layer_it = layers.find(name);
+    // if (layer_it == layers.end()) {
+    //     throw std::runtime_error(std::string("no layer by the name of '")+name+"'");
+    // }
     return layer(layer_it->second);
 }
 
@@ -439,6 +466,7 @@ inline layer::layer(protozero::data_view const& layer_view) :
         if (!has_name) {
             msg += " name";
         }
+        return;
     }
 }
 
